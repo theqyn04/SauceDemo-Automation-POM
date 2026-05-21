@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="SauceDemo.AutomationTest.Pages/SauceDemo.AutomationTest.Pages.csproj" Id="1214d120-37b3-43f0-9662-a9950e62518e" />
+  <Project Path="SauceDemo.AutomationTest/SauceDemo.AutomationTest.csproj" />
+</Solution>
