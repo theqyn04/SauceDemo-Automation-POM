@@ -1,9 +1,13 @@
 ﻿using NUnit.Framework;
+using NUnit.Framework.Interfaces;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Support.UI;
 using System;
-using SauceDemo.AutomationTest.Pages; 
+using System.IO;
+using SauceDemo.AutomationTest.Pages;
+using AventStack.ExtentReports;
+using AventStack.ExtentReports.Reporter;
 
 namespace SauceDemo.AutomationTest
 {
@@ -12,9 +16,35 @@ namespace SauceDemo.AutomationTest
     {
         private IWebDriver driver;
 
+        private static ExtentReports extent;
+        private ExtentTest test;
+
+        [OneTimeSetUp]
+        public void GlobalSetup()
+        {
+            string projectDirectory = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory).Parent.Parent.Parent.FullName;
+            string reportPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestResults");
+            if (!Directory.Exists(reportPath))
+            {
+                Directory.CreateDirectory(reportPath);
+            }
+
+            var sparkReporter = new ExtentSparkReporter(Path.Combine(reportPath, "ExtentReport.html"));
+
+            
+            extent = new ExtentReports();
+            extent.AttachReporter(sparkReporter);
+            extent.AddSystemInfo("Environment", "QA - Production Simulation");
+            extent.AddSystemInfo("Tester", "Quyen Nguyen"); 
+            extent.AddSystemInfo("Machine", Environment.MachineName);
+        }
+
         [SetUp]
         public void Setup()
         {
+            // Tạo một node test mới trong báo cáo cho mỗi bài test
+            test = extent.CreateTest(TestContext.CurrentContext.Test.Name);
+
             ChromeOptions options = new ChromeOptions();
             options.AddArgument("--start-maximized");
             options.AddArgument("--disable-extensions");
@@ -56,7 +86,27 @@ namespace SauceDemo.AutomationTest
         [TearDown]
         public void CloseBrowser()
         {
+            // Tự động kiểm tra trạng thái bài test để ghi nhận vào báo cáo nếu có lỗi bất ngờ
+            var status = TestContext.CurrentContext.Result.Outcome.Status;
+            var stacktrace = string.IsNullOrEmpty(TestContext.CurrentContext.Result.StackTrace)
+                ? ""
+                : string.Format("<pre>{0}</pre>", TestContext.CurrentContext.Result.StackTrace);
+
+            if (status == TestStatus.Failed)
+            {
+                test.Log(Status.Fail, "Bài test bị THẤT BẠI. Chi tiết lỗi: " + TestContext.CurrentContext.Result.Message);
+                test.Log(Status.Fail, stacktrace);
+            }
+
+            // Giải phóng trình duyệt
             driver?.Dispose();
+        }
+
+        [OneTimeTearDown]
+        public void GlobalTearDown()
+        {
+            // Ghi toàn bộ dữ liệu và xuất ra file HTML hoàn chỉnh
+            extent.Flush();
         }
     }
 }
