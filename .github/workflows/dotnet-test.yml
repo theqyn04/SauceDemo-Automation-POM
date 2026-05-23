@@ -1,0 +1,41 @@
+name: .NET Core Automation Test CI
+
+# Kích hoạt Pipeline mỗi khi có hành động Push hoặc Pull Request vào nhánh main
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest # Mượn máy ảo Linux của GitHub
+
+    steps:
+    # 1. Kéo mã nguồn từ kho GitHub về máy ảo
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # 2. Cài đặt môi trường .NET 8.0 SDK lên máy ảo
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    # 3. Khôi phục các thư viện NuGet (Restore Dependencies)
+    - name: Restore dependencies
+      run: dotnet restore
+
+    # 4. Thực thi kiểm thử tự động (Chạy ở chế độ không giao diện để máy ảo Linux chạy được)
+    - name: Execute Automation Tests
+      run: dotnet test --configuration Release
+
+    # 5. Thu thập kết quả báo cáo (ExtentReport & Screenshots) sau khi test xong để em tải về xem
+    - name: Upload Test Artifacts
+      if: always() # Luôn luôn chạy bước này kể cả test Pass hay Fail
+      uses: actions/upload-artifact@v4
+      with:
+        name: Automation-Test-Results
+        path: |
+          **/TestResults/
+          **/ExtentReport.html
