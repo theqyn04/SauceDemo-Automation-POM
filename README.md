@@ -19,20 +19,33 @@ Một Framework kiểm thử tự động toàn trình (End-to-End Purchase Flow
 Mã nguồn được tổ chức chặt chẽ thành 2 project riêng biệt nhằm phân định rõ ràng vai trò giữa logic kiểm thử và định nghĩa thành phần giao diện:
 
 ```text
-Solution 'SauceDemo.AutomationTest'
+SauceDemo.Automation/
+├── .github/
+│   └── workflows/
+│       └── dotnet-test.yml                  # Pipeline CI/CD tự động chạy test trên mây (GitHub Actions)
 │
-├── 📂 SauceDemo.AutomationTest (Test Runner Project)
-│   ├── 🛠️ Dependencies (NUnit, Selenium, ExtentReports, Newtonsoft.Json)
-│   ├── 📄 TestData.json               # Kho lưu trữ các bộ dữ liệu tài khoản kiểm thử (DDT)
-│   ├── 📄 TestDataModel.cs            # Class ánh xạ cấu trúc đối tượng JSON sang C#
-│   └── 📄 PurchaseFlowTest.cs         # Kịch bản kiểm thử động & Điều hướng luồng vòng đời
+├── SauceDemo.AutomationTest.Pages/          # [PROJECT LAYER 1] - TẦNG ĐỊNH NGHĨA PHẦN TỬ & TƯƠNG TÁC UI
+│   ├── Pages/
+│   │   ├── LoginPage.cs                     # Quản lý Locators và hành vi trang Đăng nhập (Login)
+│   │   ├── InventoryPage.cs                 # Quản lý danh sách sản phẩm và giỏ hàng sơ cấp
+│   │   ├── CartPage.cs                      # Quản lý thông tin và kiểm tra giỏ hàng
+│   │   ├── CheckoutPage.cs                  # Quản lý form điền thông tin khách hàng mua hàng
+│   │   └── OverviewPage.cs                  # Quản lý trang xác nhận đơn hàng cuối cùng
+│   └── SauceDemo.AutomationTest.Pages.csproj
 │
-└── 📂 SauceDemo.AutomationTest.Pages (Page Object Library Project)
-    ├── 🛠️ Dependencies (Selenium WebDriver)
-    ├── 📄 LoginPage.cs                # Quản lý Đăng nhập (Username, Password, Login Button)
-    ├── 📄 InventoryPage.cs            # Quản lý danh sách sản phẩm, chọn Balo và vào giỏ hàng
-    ├── 📄 CheckoutPage.cs             # Điền thông tin cá nhân (First Name, Last Name, Zip Code)
-    └── 📄 OverviewPage.cs             # Xác nhận đơn hàng, bấm Finish và kiểm tra kết quả hiển thị
+├── SauceDemo.AutomationTest/                # [PROJECT LAYER 2] - TẦNG KỊCH BẢN, DATA-DRIVEN & VẬN HÀNH
+│   ├── LoginTest.cs                         # Kịch bản Functional Test (Đăng nhập đúng/sai)
+│   ├── PurchaseFlowTest.cs                  # Kịch bản End-to-End (E2E) Test luồng mua hàng toàn trình
+│   ├── ReportManager.cs                     # Bộ quản lý ExtentReports tập trung (Thread-Safe bảo mật đa luồng)
+│   ├── TestDataModel.cs                     # Model C# định nghĩa kiểu dữ liệu để ánh xạ từ file JSON
+│   ├── TestData.json                        # Ma trận dữ liệu đầu vào động (Data-Driven Testing)
+│   ├── appsettings.json                     # Quản lý cấu hình môi trường toàn cục (URL, Timeout, Browser)
+│   ├── TestResults/                         # Thư mục tự động sinh ra sau khi chạy test
+│   │   ├── ExtentReport.html                # Báo cáo Dashboard đồ họa hợp nhất tổng thể
+│   │   └── Screenshots/                     # Nơi lưu trữ ảnh chụp màn hình tự động khi có kịch bản bị lỗi (Fail)
+│   └── SauceDemo.AutomationTest.csproj
+│
+└── SauceDemo.sln                            # Tập tin Solution liên kết, quản lý chung toàn bộ hệ thống
 ```
 
 
