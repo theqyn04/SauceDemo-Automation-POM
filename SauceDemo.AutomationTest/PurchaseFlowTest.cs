@@ -111,16 +111,47 @@ namespace SauceDemo.AutomationTest
         public void CloseBrowser()
         {
             var status = TestContext.CurrentContext.Result.Outcome.Status;
-            var stacktrace = string.IsNullOrEmpty(TestContext.CurrentContext.Result.StackTrace)
-                ? ""
-                : string.Format("<pre>{0}</pre>", TestContext.CurrentContext.Result.StackTrace);
 
             if (status == TestStatus.Failed)
             {
-                test.Log(Status.Fail, "Bài test bị THẤT BẠI: " + TestContext.CurrentContext.Result.Message);
-                test.Log(Status.Fail, stacktrace);
+                //Lấy thông báo lỗi và Stack Trace
+                string errorMessage = TestContext.CurrentContext.Result.Message;
+                string stacktrace = string.IsNullOrEmpty(TestContext.CurrentContext.Result.StackTrace)
+                    ? ""
+                    : string.Format("<pre>{0}</pre>", TestContext.CurrentContext.Result.StackTrace);
+
+                //Định nghĩa thư mục lưu trữ ảnh chụp màn hình (Nằm trong thư mục TestResults)
+                string projectDirectory = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory).Parent.Parent.Parent.FullName;
+                string screenshotFolder = Path.Combine(projectDirectory, "TestResults", "Screenshots");
+
+                if (!Directory.Exists(screenshotFolder))
+                {
+                    Directory.CreateDirectory(screenshotFolder);
+                }
+
+                //Tiến hành chụp ảnh màn hình thực tế thông qua ITakesScreenshot
+                string testName = TestContext.CurrentContext.Test.Name; // Ví dụ: Test_With_User_problem_user
+                string screenshotPath = Path.Combine(screenshotFolder, $"{testName}.png");
+
+                try
+                {
+                    var screenshotDriver = (ITakesScreenshot)driver;
+                    var screenshot = screenshotDriver.GetScreenshot();
+                    screenshot.SaveAsFile(screenshotPath);
+
+                    //Ghi vết lỗi và đính kèm bức ảnh trực tiếp vào file báo cáo ExtentReports
+                    test.Log(Status.Fail, "Bài test bị THẤT BẠI: " + errorMessage);
+                    test.Log(Status.Fail, "Ảnh chụp màn hình thời điểm lỗi xảy ra:",
+                        MediaEntityBuilder.CreateScreenCaptureFromPath(Path.Combine("Screenshots", $"{testName}.png")).Build());
+                    test.Log(Status.Fail, stacktrace);
+                }
+                catch (Exception ex)
+                {
+                    test.Log(Status.Warning, "Không thể chụp ảnh màn hình do: " + ex.Message);
+                }
             }
 
+            // Đóng trình duyệt giải phóng bộ nhớ
             driver?.Dispose();
         }
 
