@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using Microsoft.Extensions.Configuration;
 
 namespace SauceDemo.AutomationTest
 {
@@ -21,6 +22,9 @@ namespace SauceDemo.AutomationTest
         private IWebDriver driver;
         private static ExtentReports extent;
         private static ThreadLocal<ExtentTest> threadTest = new ThreadLocal<ExtentTest>();
+
+        // Biến static lưu trữ cấu hình đọc từ appsettings.json
+        private static IConfiguration _config;
 
         [OneTimeSetUp]
         public static void GlobalSetup()
@@ -36,6 +40,12 @@ namespace SauceDemo.AutomationTest
 
             extent.AddSystemInfo("Environment", "QA - Production Simulation");
             extent.AddSystemInfo("Tester", "Quyen Nguyen");
+
+            // KHỞI TẠO BỘ ĐỌC CONFIG: Trỏ đến file appsettings.json trong thư mục build
+            _config = new ConfigurationBuilder()
+                .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .Build();
         }
 
         // HÀM ĐỌC DATA TỪ JSON: Chuyển đổi file JSON thành danh sách các TestCase dữ liệu
@@ -63,19 +73,21 @@ namespace SauceDemo.AutomationTest
             var testInstance = extent.CreateTest(TestContext.CurrentContext.Test.Name);
             threadTest.Value = testInstance;
 
+            // Đọc dữ liệu môi trường động từ file cấu hình appsettings.json
+            string baseUrl = _config["AppSettings:BaseUrl"];
+            int timeoutSeconds = int.Parse(_config["AppSettings:ImplicitWaitSeconds"]);
+
             ChromeOptions options = new ChromeOptions();
             options.AddArgument("--start-maximized");
             options.AddArgument("--disable-extensions");
-
-            //Tắt hoàn toàn Popup cảnh báo lộ mật khẩu của Chrome
             options.AddUserProfilePreference("profile.password_manager_leak_detection", false);
             options.AddUserProfilePreference("credentials_enable_service", false);
             options.AddUserProfilePreference("profile.password_manager_enabled", false);
 
             driver = new ChromeDriver(options);
-            driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(5);
-            driver.Navigate().GoToUrl("https://www.saucedemo.com/");
-            threadTest.Value.Log(Status.Info, "Trình duyệt Chrome khởi động thành công.");
+            driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(timeoutSeconds);
+            driver.Navigate().GoToUrl(baseUrl);
+            threadTest.Value.Log(Status.Info, $"Chrome khởi động. Môi trường: {baseUrl}");
         }
 
         //Ép NUnit lặp lại bài test dựa trên nguồn hàm LoadTestData
