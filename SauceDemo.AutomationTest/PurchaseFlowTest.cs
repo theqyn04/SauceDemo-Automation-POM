@@ -9,18 +9,21 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 
 namespace SauceDemo.AutomationTest
 {
     [TestFixture]
+    [Parallelizable(ParallelScope.Children)]
+    [FixtureLifeCycle(LifeCycle.InstancePerTestCase)]
     public class PurchaseFlowTest
     {
         private IWebDriver driver;
         private static ExtentReports extent;
-        private ExtentTest test;
+        private static ThreadLocal<ExtentTest> threadTest = new ThreadLocal<ExtentTest>();
 
         [OneTimeSetUp]
-        public void GlobalSetup()
+        public static void GlobalSetup()
         {
             // Cấu hình đường dẫn xuất báo cáo trực tiếp ra thư mục gốc Solution
             string projectDirectory = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory).Parent.Parent.Parent.FullName;
@@ -57,8 +60,8 @@ namespace SauceDemo.AutomationTest
         [SetUp]
         public void Setup()
         {
-            // Khởi tạo node test trong ExtentReports với tên cụ thể của từng Username đang chạy
-            test = extent.CreateTest(TestContext.CurrentContext.Test.Name);
+            var testInstance = extent.CreateTest(TestContext.CurrentContext.Test.Name);
+            threadTest.Value = testInstance;
 
             ChromeOptions options = new ChromeOptions();
             options.AddArgument("--start-maximized");
@@ -72,7 +75,7 @@ namespace SauceDemo.AutomationTest
             driver = new ChromeDriver(options);
             driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(5);
             driver.Navigate().GoToUrl("https://www.saucedemo.com/");
-            test.Log(Status.Info, "Trình duyệt Chrome khởi động thành công.");
+            threadTest.Value.Log(Status.Info, "Trình duyệt Chrome khởi động thành công.");
         }
 
         //Ép NUnit lặp lại bài test dựa trên nguồn hàm LoadTestData
@@ -87,24 +90,24 @@ namespace SauceDemo.AutomationTest
 
             // Bốc dữ liệu từ tham số `data` được truyền động vào bài test
             loginPage.Login(data.Username, data.Password);
-            test.Log(Status.Info, $"Đăng nhập thành công với tài khoản: {data.Username}");
+            threadTest.Value.Log(Status.Info, $"Đăng nhập thành công với tài khoản: {data.Username}");
 
             inventoryPage.AddBackpackToCartAndGoToCart();
-            test.Log(Status.Info, "Đã chọn sản phẩm và vào giỏ hàng.");
+            threadTest.Value.Log(Status.Info, "Đã chọn sản phẩm và vào giỏ hàng.");
 
             checkoutPage.ClickCheckout();
 
             // Luồng chạy sẽ lấy thông tin FirstName, LastName động từ JSON
             checkoutPage.EnterInformationAndContinue(data.FirstName, data.LastName, data.PostalCode);
-            test.Log(Status.Info, $"Điền thông tin Checkout: {data.FirstName} {data.LastName}");
+            threadTest.Value.Log(Status.Info, $"Điền thông tin Checkout: {data.FirstName} {data.LastName}");
 
             overviewPage.ClickFinish();
-            test.Log(Status.Info, "Bấm Finish xác nhận đơn hàng.");
+            threadTest.Value.Log(Status.Info, "Bấm Finish xác nhận đơn hàng.");
 
             string actualMessage = overviewPage.GetCompleteMessage();
 
             Assert.That(actualMessage, Is.EqualTo(data.ExpectedMessage), "LỖI: Thông báo hiển thị không khớp!");
-            test.Log(Status.Pass, $"Kết quả kiểm thử cho user {data.Username} ĐẠT!");
+            threadTest.Value.Log(Status.Pass, $"Kết quả kiểm thử cho user {data.Username} ĐẠT!");
         }
 
         [TearDown]
@@ -140,14 +143,14 @@ namespace SauceDemo.AutomationTest
                     screenshot.SaveAsFile(screenshotPath);
 
                     //Ghi vết lỗi và đính kèm bức ảnh trực tiếp vào file báo cáo ExtentReports
-                    test.Log(Status.Fail, "Bài test bị THẤT BẠI: " + errorMessage);
-                    test.Log(Status.Fail, "Ảnh chụp màn hình thời điểm lỗi xảy ra:",
+                    threadTest.Value.Log(Status.Fail, "Bài test bị THẤT BẠI: " + errorMessage);
+                    threadTest.Value.Log(Status.Fail, "Ảnh chụp màn hình thời điểm lỗi xảy ra:",
                         MediaEntityBuilder.CreateScreenCaptureFromPath(Path.Combine("Screenshots", $"{testName}.png")).Build());
-                    test.Log(Status.Fail, stacktrace);
+                    threadTest.Value.Log(Status.Fail, stacktrace);
                 }
                 catch (Exception ex)
                 {
-                    test.Log(Status.Warning, "Không thể chụp ảnh màn hình do: " + ex.Message);
+                    threadTest.Value.Log(Status.Warning, "Không thể chụp ảnh màn hình do: " + ex.Message);
                 }
             }
 
@@ -156,7 +159,7 @@ namespace SauceDemo.AutomationTest
         }
 
         [OneTimeTearDown]
-        public void GlobalTearDown()
+        public static void GlobalTearDown()
         {
             extent.Flush();
         }
