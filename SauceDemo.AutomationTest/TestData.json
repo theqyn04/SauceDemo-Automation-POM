@@ -1,0 +1,18 @@
+[
+  {
+    "Username": "standard_user",
+    "Password": "secret_sauce",
+    "FirstName": "Quyen",
+    "LastName": "Nguyen",
+    "PostalCode": "100000",
+    "ExpectedMessage": "Thank you for your order!"
+  },
+  {
+    "Username": "problem_user",
+    "Password": "secret_sauce",
+    "FirstName": "Alex",
+    "LastName": "Swith",
+    "PostalCode": "200000",
+    "ExpectedMessage": "Thank you for your order!"
+  }
+]
